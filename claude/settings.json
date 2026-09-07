@@ -1,0 +1,128 @@
+{
+  "env": {
+    "MAX_THINKING_TOKENS": "10000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "CLAUDE_CODE_NO_FLICKER": "0",
+    "MCP_TIMEOUT": "60000",
+    "MCP_TOOL_TIMEOUT": "120000"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read",
+      "Bash(claude -p:*)",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "NotebookEdit",
+      "Skill",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git fetch*)",
+      "Bash(git pull*)",
+      "Bash(git add*)",
+      "Bash(pnpm *)",
+      "Bash(npx *)",
+      "Bash(tsc*)",
+      "Bash(node *)",
+      "Bash(drizzle-kit *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(which *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(rm *)",
+      "Bash(wc *)",
+      "Bash(sort *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(pwd)",
+      "Bash(env)",
+      "Bash(gh *)",
+      "Bash(find *)",
+      "Bash(sed *)",
+      "Bash(awk *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(xargs *)",
+      "Bash(diff *)",
+      "Bash(comm *)",
+      "Bash(uniq *)",
+      "Bash(cut *)",
+      "Bash(tr *)",
+      "Bash(stat *)",
+      "Bash(file *)",
+      "Bash(realpath *)",
+      "Bash(dirname *)",
+      "Bash(basename *)",
+      "Bash(touch *)",
+      "Bash(chmod *)",
+      "Bash(du *)",
+      "Bash(df *)",
+      "Bash(cd *)",
+      "Bash(git commit*)",
+      "Bash(git checkout*)",
+      "Bash(git switch*)",
+      "Bash(git stash*)",
+      "Bash(git merge*)",
+      "Bash(git rebase*)",
+      "Bash(git cherry-pick*)",
+      "Bash(git push*)",
+      "Bash(git remote*)",
+      "Bash(git tag*)",
+      "Bash(vercel remove:*)"
+    ],
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.production)",
+      "Read(**/.env.development)",
+      "Read(**/.env.e2e)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Bash(curl * | bash)",
+      "Bash(scp *)",
+      "Bash(nc *)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_CONFIG_DIR/hooks/block-protected-branch.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_CONFIG_DIR/hooks/ask-before-dev-server.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash $CLAUDE_CONFIG_DIR/statusline-command.sh"
+  },
+  "tui": "fullscreen",
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true
+}
