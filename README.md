@@ -30,7 +30,7 @@ part of that which is generic enough to be useful to anyone.
 |---|---|
 | `claude/settings.json` | Permissions (68 allow / 16 deny), hooks, statusline |
 | `claude/CLAUDE.md` | A template — structure, not content |
-| `claude/hooks/` | Two `PreToolUse` hooks that actually stop things |
+| `claude/hooks/` | Three `PreToolUse` hooks that actually stop things |
 | `claude/skills/` | 4 skills for day-to-day git and PR work |
 | `claude/statusline-command.sh` | Status line showing **context used** — the number you steer by |
 | `install.sh` | Symlinks it into `~/.claude` |
@@ -61,6 +61,12 @@ Rules in `CLAUDE.md` are requests. Hooks are not.
 - **`ask-before-dev-server.sh`** — asks before starting a dev server, because with several
   sessions open the port you were using is not yours alone. Scope with
   `CLAUDE_DEV_SERVER_DIRS`.
+- **`require-worktree.sh`** — refuses to edit code in the main checkout while it sits on a
+  shared branch. Running several sessions on one repo collides three ways, all of them
+  silent: the git index is shared, a whole-project pre-commit check fails on someone
+  else's half-finished work, and two sessions editing one file lose one of the changes. A
+  worktree removes all three. Scope with `CLAUDE_WORKTREE_REPOS`; `.md` files and task
+  branches pass through.
 
 Both are commented with *why* they exist and what they deliberately let through. Read them
 before enabling them; a hook you don't understand is a hook that will block you at 2am.

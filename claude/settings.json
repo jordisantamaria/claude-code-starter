@@ -115,6 +115,15 @@
             "command": "bash $CLAUDE_CONFIG_DIR/hooks/ask-before-dev-server.sh"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_CONFIG_DIR/hooks/require-worktree.sh"
+          }
+        ]
       }
     ]
   },
