@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-# Claude Code status line — mirrors a Starship-style prompt
+# Claude Code status line — mirrors a Starship-style prompt.
+#
+# Shows: directory · git branch · model · context used.
+#
+# The context percentage is the point. Managing context is most of what using Claude Code
+# is, and you can't manage a number you can't see. Colour thresholds: green below 50%,
+# yellow 50-80%, red above 80% — 50% is where compacting on your own terms beats having
+# it happen automatically in the middle of something.
 input=$(cat)
 
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')

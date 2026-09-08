@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Instala esta configuración en ~/.claude ENLAZANDO, no copiando.
+# Installs this configuration into ~/.claude by SYMLINKING, not copying.
 #
-# Por qué enlaces y no copias: si copias, cada arreglo que hagas en caliente se queda solo
-# en ~/.claude y el repo se va quedando viejo sin avisar. Con enlaces, editar la
-# configuración ES editar el repo, y no hay nada que acordarse de sincronizar.
+# Why links and not copies: if you copy, every fix you make in the heat of the moment
+# stays in ~/.claude and the repo goes stale without telling you. With symlinks, editing
+# your config IS editing the repo, and there is nothing to remember to sync.
 #
-# Uso:
-#   ./install.sh            instala
-#   ./install.sh --dry-run  enseña qué haría, sin tocar nada
+# Usage:
+#   ./install.sh            install
+#   ./install.sh --dry-run  show what it would do, without touching anything
 #
-# Lo que ya existe y no es un enlace se guarda como <fichero>.bak antes de sustituirlo.
+# Anything that already exists and is not a symlink is saved as <file>.bak first.
 
 set -euo pipefail
 
@@ -27,11 +27,11 @@ link() {
     say "backup: $dst → $dst.bak"
     run mv "$dst" "$dst.bak"
   fi
-  say "enlace: ${dst/#$HOME/\~} → ${src/#$REPO_DIR/.}"
+  say "link:   ${dst/#$HOME/\~} → ${src/#$REPO_DIR/.}"
   run ln -sfn "$src" "$dst"
 }
 
-printf '\nInstalando en %s\n\n' "$CLAUDE_DIR"
+printf '\nInstalling into %s\n\n' "$CLAUDE_DIR"
 run mkdir -p "$CLAUDE_DIR/skills"
 
 link "$REPO_DIR/claude/settings.json"        "$CLAUDE_DIR/settings.json"
@@ -39,24 +39,24 @@ link "$REPO_DIR/claude/CLAUDE.md"            "$CLAUDE_DIR/CLAUDE.md"
 link "$REPO_DIR/claude/hooks"                "$CLAUDE_DIR/hooks"
 link "$REPO_DIR/claude/statusline-command.sh" "$CLAUDE_DIR/statusline-command.sh"
 
-# Las skills se enlazan una a una: así conviven con las tuyas en el mismo directorio.
+# Skills are linked one by one, so they coexist with your own in the same directory.
 for d in "$REPO_DIR"/claude/skills/*/; do
   link "${d%/}" "$CLAUDE_DIR/skills/$(basename "$d")"
 done
 
 cat <<'FIN'
 
-Listo. Dos cosas antes de usarlo:
+Done. Two things before you use it:
 
-  1. Los hooks necesitan `jq` y `gh` (GitHub CLI) en el PATH.
-  2. Los hooks no actúan en ningún repo hasta que se los digas. En tu shell:
+  1. The hooks need `jq` and `gh` (GitHub CLI) on your PATH.
+  2. The hooks act in no repo until you tell them to. In your shell:
 
-       export CLAUDE_PROTECTED_REPOS="miorg/mi-repo"
-       export CLAUDE_DEV_SERVER_DIRS="$HOME/work/mi-proyecto"
+       export CLAUDE_PROTECTED_REPOS="myorg/my-repo"
+       export CLAUDE_DEV_SERVER_DIRS="$HOME/work/my-project"
 
-     Sin CLAUDE_PROTECTED_REPOS el hook de rama protegida actúa en TODOS los repos,
-     que puede ser justo lo que quieres. Léelo antes de decidir:
+     With CLAUDE_PROTECTED_REPOS unset, the protected-branch hook acts in EVERY repo,
+     which may be exactly what you want. Read it before deciding:
      claude/hooks/block-protected-branch.sh
 
-Y lo más importante: esto es un punto de partida, no una configuración terminada.
+And the part that matters: this is a starting point, not a finished configuration.
 FIN

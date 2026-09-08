@@ -32,6 +32,7 @@ part of that which is generic enough to be useful to anyone.
 | `claude/CLAUDE.md` | A template — structure, not content |
 | `claude/hooks/` | Two `PreToolUse` hooks that actually stop things |
 | `claude/skills/` | 11 skills for day-to-day development |
+| `claude/statusline-command.sh` | Status line showing **context used** — the number you steer by |
 | `install.sh` | Symlinks it into `~/.claude` |
 
 ## Install

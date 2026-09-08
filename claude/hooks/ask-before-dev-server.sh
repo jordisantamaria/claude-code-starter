@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# Pide confirmación antes de que Claude arranque un dev server.
+# Asks for confirmation before Claude starts a dev server.
 #
-# El problema que resuelve: con varias sesiones abiertas sobre el mismo proyecto, un
-# `npm run dev` lanzado de fondo por Claude ocupa el puerto en el que tú estabas mirando
-# tu rama, y encima cuesta descubrir quién lo tenía. Cuando los puertos están fijados por
-# configuración externa (callbacks de OAuth registrados por puerto, por ejemplo), no vale
-# el «usa otro puerto».
+# The problem it solves: with several sessions open on the same project, an `npm run dev`
+# launched in the background by Claude takes the port you were using to look at your own
+# branch — and it's hard to find out who holds it. When ports are pinned by external
+# configuration (OAuth callbacks registered per port, say), "just use another port" isn't
+# an option.
 #
-# No bloquea: devuelve `ask`, así que Claude puede proponerlo y tú decides en el momento.
+# It doesn't block: it returns `ask`, so Claude can propose it and you decide on the spot.
 #
-# ── Configuración ────────────────────────────────────────────────────────────
-# CLAUDE_DEV_SERVER_DIRS: prefijos de ruta donde aplica, separados por espacios.
-#   Vacío = aplica en todos los directorios.
-#   Ejemplo: export CLAUDE_DEV_SERVER_DIRS="$HOME/work/tienda $HOME/work/api"
+# ── Configuration ────────────────────────────────────────────────────────────
+# CLAUDE_DEV_SERVER_DIRS: path prefixes where this applies, space-separated.
+#   Empty = applies in every directory.
+#   Example: export CLAUDE_DEV_SERVER_DIRS="$HOME/work/shop $HOME/work/api"
 DEV_SERVER_DIRS="${CLAUDE_DEV_SERVER_DIRS:-}"
 #
-# Deja pasar a propósito:
-#   - builds, tests, lint, tsc (no escuchan en ningún puerto)
-#   - inspeccionar o matar lo que ya está escuchando (ss, lsof, kill, pgrep)
-#   - mencionar el comando dentro de un grep/echo
+# Deliberately allowed through:
+#   - builds, tests, lint, tsc (nothing listens on a port)
+#   - inspecting or killing what already listens (ss, lsof, kill, pgrep)
+#   - mentioning the command inside a grep/echo
 
 set -uo pipefail
 
@@ -29,7 +29,7 @@ cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)
 dir=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)
 [ -z "$dir" ] && dir=$PWD
 
-# `cd /otro/proyecto && npm run dev` actúa sobre ESE directorio, no sobre el de la sesión.
+# `cd /other/project && npm run dev` acts on THAT directory, not the session's.
 cd_target=$(printf '%s' "$cmd" | grep -oE '^[[:space:]]*cd[[:space:]]+[^&;|]+' | sed -E 's/^[[:space:]]*cd[[:space:]]+//; s/[[:space:]]+$//' | tr -d '"'"'"'')
 [ -n "$cd_target" ] && [ -d "$cd_target" ] && dir=$cd_target
 
@@ -41,7 +41,7 @@ if [ -n "$DEV_SERVER_DIRS" ]; then
   [ "$match" = "0" ] && exit 0
 fi
 
-# Se mira segmento a segmento: `ss -lptn ... | grep vite` no arranca nada.
+# Checked segment by segment: `ss -lptn ... | grep vite` starts nothing.
 matched=""
 while IFS= read -r seg || [ -n "$seg" ]; do
   seg=${seg#"${seg%%[![:space:]]*}"}
@@ -59,7 +59,7 @@ done < <(printf '%s' "$cmd" | sed 's/&&/\n/g; s/||/\n/g; s/;/\n/g; s/|/\n/g')
 
 [ -z "$matched" ] && exit 0
 
-jq -nc --arg reason "Esto levanta un dev server en $dir, y ese puerto puede estar ocupado por una sesión que no es la tuya. Pregunta antes de arrancarlo, di qué puerto va a ocupar y por qué lo necesitas; si solo hace falta comprobar tipos o tests, usa build/tsc/vitest en su lugar." '{
+jq -nc --arg reason "This starts a dev server in $dir, and that port may belong to a session that isn't yours. Ask before starting it, say which port it will take and why you need it; if you only need to check types or tests, use build/tsc/vitest instead." '{
   hookSpecificOutput: {
     hookEventName: "PreToolUse",
     permissionDecision: "ask",

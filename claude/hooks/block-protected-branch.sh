@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
-# Impide que Claude mergee o empuje a la rama que publica a producción.
+# Stops Claude from merging or pushing to the branch that ships to production.
 #
-# La idea: preparar el release es trabajo de la IA; publicarlo es una decisión humana.
-# Claude puede hacerlo todo —ramas, commits, PRs, merges a la rama de integración— y
-# para en el último escalón.
+# The idea: preparing the release is the AI's job; publishing it is a human decision.
+# Claude can do all of it — branch, commits, PR, merges to your integration branch —
+# and stops at the last step.
 #
-# Esto NO es una regla escrita en CLAUDE.md, a propósito. Una regla se diluye entre las
-# demás y algún día no se aplica; un hook deniega siempre, y la denegación no se negocia.
+# This is deliberately NOT a rule in CLAUDE.md. A rule dilutes among the others and one
+# day it doesn't apply; a hook denies every time, and the denial is not negotiable.
 #
-# ── Configuración ────────────────────────────────────────────────────────────
-# CLAUDE_PROTECTED_REPOS: fragmentos que deben aparecer en la URL del remote `origin`
-#   para que el hook actúe. Vacío = actúa en TODOS los repos.
-#   Ejemplo: export CLAUDE_PROTECTED_REPOS="miorg/tienda miorg/api"
-# CLAUDE_INTEGRATION_BRANCHES: ramas a las que sí se puede mergear sin preguntar.
+# ── Configuration ────────────────────────────────────────────────────────────
+# CLAUDE_PROTECTED_REPOS: fragments that must appear in the `origin` remote URL for this
+#   hook to act. Empty = acts in EVERY repo.
+#   Example: export CLAUDE_PROTECTED_REPOS="myorg/shop myorg/api"
+# CLAUDE_INTEGRATION_BRANCHES: branches you can merge into without being asked.
 PROTECTED_REPOS="${CLAUDE_PROTECTED_REPOS:-}"
 INTEGRATION_BRANCHES="${CLAUDE_INTEGRATION_BRANCHES:-develop dev staging}"
 #
-# Deja pasar a propósito:
-#   - `gh pr create --base main` (preparar el PR es justo lo que se quiere)
-#   - cualquier merge o push a una rama de integración
-#   - lecturas: `gh pr view`, `git log main..HEAD`, `git diff main`…
+# Deliberately allowed through:
+#   - `gh pr create --base main` (preparing the PR is exactly what you want)
+#   - any merge or push to an integration branch
+#   - reads: `gh pr view`, `git log main..HEAD`, `git diff main`…
 #
-# Nota conocida: el hook mira el texto del comando, así que un comando que solo MENCIONA
-# estas operaciones (escribir este mismo fichero con un heredoc, por ejemplo) también se
-# deniega. Es el precio de no parsear shell de verdad, y se prefiere el falso positivo.
+# Known limitation: the hook inspects the command text, so a command that merely MENTIONS
+# these operations (writing this very file with a heredoc, for instance) is denied too.
+# That's the price of not parsing shell for real, and the false positive is preferred.
 
 set -uo pipefail
 
@@ -31,15 +31,15 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)
 [ -z "$cmd" ] && exit 0
 
-# Atajo barato: si no se nombra main/master, no hay nada que mirar.
+# Cheap shortcut: if main/master isn't named, there's nothing to look at.
 printf '%s' "$cmd" | grep -qE '\bmain\b|\bmaster\b|pr merge' || exit 0
 
 dir=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)
 [ -z "$dir" ] && dir=$PWD
 
-# Un comando que empieza por `cd /otro/repo && ...` actúa sobre ESE repo, no sobre el
-# directorio de la sesión. Sin esto, mirar el repo equivocado daba falsos positivos: no
-# encontraba el PR, no podía leer su base y denegaba un merge perfectamente legítimo.
+# A command starting with `cd /other/repo && ...` acts on THAT repo, not on the session's
+# directory. Without this, looking at the wrong repo produced false positives: it couldn't
+# find the PR, couldn't read its base, and denied a perfectly legitimate merge.
 cd_target=$(printf '%s' "$cmd" | grep -oE '^[[:space:]]*cd[[:space:]]+[^&;|]+' | sed -E 's/^[[:space:]]*cd[[:space:]]+//; s/[[:space:]]+$//' | tr -d '"'"'"'')
 [ -n "$cd_target" ] && [ -d "$cd_target" ] && dir=$cd_target
 
@@ -63,44 +63,44 @@ deny() {
   exit 0
 }
 
-PROD_RULE='main publica, así que ese último paso lo da una persona desde GitHub. Prepara la rama, el commit y el PR (crear el PR con base main sí está permitido), déjalo listo y avisa.'
+PROD_RULE='main ships, so a person takes that last step from GitHub. Prepare the branch, the commits and the PR (creating a PR with base main is allowed), leave it ready and say so.'
 
-# ── push directo a la rama que publica ───────────────────────────────────────
-# Cubre las variantes con `origin main`, `-u origin main`, `HEAD:main` y `--force`.
-# Empujar main HACIA otra rama (`main:develop`) no es publicar, así que solo cuenta
-# cuando main es el DESTINO — la parte después de los dos puntos.
+# ── direct push to the branch that ships ─────────────────────────────────────
+# Covers the `origin main`, `-u origin main`, `HEAD:main` and `--force` variants.
+# Pushing main INTO another branch (`main:develop`) isn't publishing, so it only counts
+# when main is the DESTINATION — the part after the colon.
 if printf '%s' "$cmd" | grep -qE '\bgit\s+push\b'; then
   if printf '%s' "$cmd" | grep -qE '(:|[[:space:]])(refs/heads/)?(main|master)([[:space:]]|$)'; then
-    deny "Bloqueado: push directo a la rama que publica. $PROD_RULE"
+    deny "Blocked: direct push to the branch that ships. $PROD_RULE"
   fi
 fi
 
-# ── merge de un PR cuya base es la rama que publica ──────────────────────────
-# La base no viene en el comando, así que se consulta. Si no se puede averiguar, se
-# deniega: preferimos un falso positivo que se destraba a mano a un deploy que nadie pidió.
+# ── merging a PR whose base is the branch that ships ─────────────────────────
+# The base isn't in the command, so it gets looked up. If it can't be determined, deny:
+# a false positive you clear by hand beats a deploy nobody asked for.
 if printf '%s' "$cmd" | grep -qE '\bgh\s+pr\s+merge\b'; then
   pr=$(printf '%s' "$cmd" | grep -oE '\bgh\s+pr\s+merge\s+[0-9]+' | grep -oE '[0-9]+$' || true)
-  # `--repo owner/name` manda sobre el directorio: es el repo que gh va a tocar.
+  # `--repo owner/name` wins over the directory: that's the repo gh will touch.
   repo_flag=$(printf '%s' "$cmd" | grep -oE '[-][-]repo[= ][^ ]+' | sed -E 's/^--repo[= ]//' || true)
   gh_args=""
   [ -n "$repo_flag" ] && gh_args="--repo $repo_flag"
-  # Sin número, gh toma el PR de la rama actual: se pregunta por esa.
+  # With no number, gh takes the current branch's PR: ask about that one.
   base=$(cd "$dir" 2>/dev/null && gh pr view $pr $gh_args --json baseRefName --jq .baseRefName 2>/dev/null || true)
   ok=0
   for b in $INTEGRATION_BRANCHES; do [ "$base" = "$b" ] && ok=1; done
   if [ "$ok" = "0" ]; then
     case "$base" in
-      main|master) deny "Bloqueado: ese PR tiene como base $base. $PROD_RULE" ;;
-      *) deny "Bloqueado: no he podido comprobar la base de ese PR, y aquí main publica. Compruébala con 'gh pr view <n> --json baseRefName'; si va a una rama de integración, indica el número. $PROD_RULE" ;;
+      main|master) deny "Blocked: that PR has base $base. $PROD_RULE" ;;
+      *) deny "Blocked: couldn't determine that PR's base, and main ships here. Check it with 'gh pr view <n> --json baseRefName'; if it targets an integration branch, pass the number. $PROD_RULE" ;;
     esac
   fi
 fi
 
-# ── merge/rebase local estando en la rama que publica ────────────────────────
+# ── local merge/rebase while on the branch that ships ────────────────────────
 if printf '%s' "$cmd" | grep -qE '\bgit\s+(merge|rebase)\b'; then
   current=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
   case "$current" in
-    main|master) deny "Bloqueado: estás en $current y eso mueve la rama que publica. $PROD_RULE" ;;
+    main|master) deny "Blocked: you're on $current and this moves the branch that ships. $PROD_RULE" ;;
   esac
 fi
 
