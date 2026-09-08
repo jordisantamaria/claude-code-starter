@@ -1,14 +1,28 @@
 # claude-code-starter
 
+> ### 📄 This repo is the companion to an article
+>
+> **Read it first — it explains why each file is where it is:**
+>
+> ### https://zenn.dev/jordisantamaria/articles/claude-code-config-layers
+>
+> *Written in Japanese. 「Claude Codeの設定を、記憶352件・スキル71個まで育てました」*
+>
+> The repo is the starting point. **The article is the method.** Copying the files
+> without the method gets you someone else's config, which is the one thing the
+> article argues against.
+
+---
+
 A working Claude Code configuration, extracted from the one I actually use every day.
 
 **This is a starting point, not a formula.** There is no config you can paste that fixes
 your setup, because someone else's config is the answer to someone else's mistakes. What
 you can copy is the *shape*: what goes where, and why.
 
-I built mine on top of [`affaan-m/ECC`](https://github.com/affaan-m/ECC) and five months
-of fixing things the moment they broke. This repo is the part of that which is generic
-enough to be useful to anyone.
+[`affaan-m/ECC`](https://github.com/affaan-m/ECC) was my start line — I no longer run it.
+What's left is five months of fixing things the moment they broke, and this repo is the
+part of that which is generic enough to be useful to anyone.
 
 ## What's here
 
