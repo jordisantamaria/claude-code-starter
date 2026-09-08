@@ -31,7 +31,7 @@ part of that which is generic enough to be useful to anyone.
 | `claude/settings.json` | Permissions (68 allow / 16 deny), hooks, statusline |
 | `claude/CLAUDE.md` | A template — structure, not content |
 | `claude/hooks/` | Two `PreToolUse` hooks that actually stop things |
-| `claude/skills/` | 7 skills for day-to-day development |
+| `claude/skills/` | 4 skills for day-to-day git and PR work |
 | `claude/statusline-command.sh` | Status line showing **context used** — the number you steer by |
 | `install.sh` | Symlinks it into `~/.claude` |
 
@@ -67,7 +67,8 @@ before enabling them; a hook you don't understand is a hook that will block you 
 
 ## The skills
 
-Development only — nothing tied to my projects.
+Git and PR work only. Deliberately few: these are the ones that are useful without
+knowing anything about my projects.
 
 | Skill | What it does |
 |---|---|
@@ -75,9 +76,6 @@ Development only — nothing tied to my projects.
 | `commit-push-pr` | Commit, push and open a draft PR in one go |
 | `get-base-branch` | Detects the closest ancestor branch |
 | `issue` | Writes a GitHub issue from a description |
-| `redesign-ui` | Builds a prompt for UI-design-focused models |
-| `new-ai-project` | Scaffolds an AI/ML project |
-| `new-llm-project` | Scaffolds an LLM project |
 
 
 ## How to actually use this
