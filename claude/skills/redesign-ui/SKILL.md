@@ -1,264 +1,152 @@
 ---
 name: redesign-ui
-description: Genera un prompt optimizado para AI especializadas en diseño UI (Google Stitch, Figma AI, v0, Lovable, Galileo) usando el contexto real del proyecto (stack, branding, copy, componentes actuales). Claude Code escribe el prompt; tú haces copy-paste en la herramienta externa para explorar opciones rápido. Úsalo cuando el usuario diga "/redesign-ui <página>", "rediseñar UI de X", "necesito explorar diseño de Y", "generar prompt para Stitch/Figma/v0".
+description: Builds a rich, copy-pasteable prompt for design-focused AI tools (v0, Figma AI, Google Stitch, Lovable, Galileo) using your project's real context — stack, brand, current component, actual copy. This skill does not design; it writes the prompt you paste into the tool. Use for "/redesign-ui <page>", "redesign the UI of X", "I need a prompt for v0/Stitch".
 ---
 
-# Skill: redesign-ui
+# /redesign-ui
 
-Claude Code tiene limitaciones haciendo UI visualmente atractiva. Esta skill **no diseña** — genera el prompt perfecto para que lo hagan herramientas especializadas, con todo el contexto del proyecto pre-cargado.
+Coding agents are good at logic and mediocre at visual hierarchy, typographic taste and
+motion feel. Design-focused tools are better at those — but their output is generic unless
+the prompt carries the product's context.
 
-## Cuándo se activa
+**The bottleneck is the prompt, not the tool.** This skill writes it.
 
-- `/redesign-ui <ruta o componente>`
-- "rediseñar la página de eventos"
-- "necesito un prompt para Stitch sobre el dashboard"
-- "explorar UI alternativas para login"
+## Input
 
-## Por qué existe esta skill
+Ask for whatever isn't given:
 
-- Claude Code es bueno escribiendo lógica, malo en visual hierarchy / typographic taste / animation feel
-- Herramientas como Google Stitch, Figma AI, v0, Lovable son entrenadas específicamente en diseño y output coherente
-- El cuello de botella NO es la herramienta — es **el prompt**: sin contexto del producto, branding, stack y goals, el output es genérico
-- Esta skill resuelve eso: genera un prompt 10× más rico que lo que escribirías manualmente, copia-pegable en cualquier tool
+1. **Page or component** — a file path or a route.
+2. **Goal** (default: "explore more visually appealing options"): denser or lighter,
+   mobile-first, more corporate, warmer, better conversion, or free text.
+3. **Target tool** (default: auto).
 
-## Inputs
+## Step 1 — Detect the stack
 
-Si no se proveen, preguntar:
-
-1. **Página o componente** a rediseñar (path tipo `apps/saas/modules/events/components/EventsList.tsx` o ruta tipo `/events`)
-2. **Goal del rediseño** (opcional, default "explorar opciones más visualmente atractivas"):
-   - "más visual / menos denso"
-   - "mobile-first"
-   - "más profesional / corporate"
-   - "más playful / cálido"
-   - "convertir mejor (CTAs)"
-   - <texto libre>
-3. **Tool target** (opcional, default "auto"):
-   - `stitch` — Google Stitch, mobile UI flows
-   - `figma` — Figma AI, design exploration sin código
-   - `v0` — Vercel v0, Next.js + Tailwind + shadcn directo a código
-   - `lovable` — Lovable, full app generation
-   - `galileo` — Galileo AI, mocks rápidos
-   - `auto` — la skill recomienda según stack y goal
-
-## Flujo
-
-### Paso 1 — Detectar contexto del proyecto
+Never assume it. Read it:
 
 ```bash
-PROJECT_ROOT=$(pwd)
-# Stack detection
-HAS_NEXT=$(test -f package.json && grep -q '"next"' package.json && echo "yes" || echo "no")
-HAS_TAILWIND=$(test -f tailwind.config.ts -o -f tailwind.config.js && echo "yes" || echo "no")
-HAS_SHADCN=$(test -d apps/saas/modules/ui/components -o -d components/ui && echo "yes" || echo "no")
-HAS_PWA=$(grep -q "next-pwa\|@serwist" package.json 2>/dev/null && echo "yes" || echo "no")
-PRIMARY_LANG=$(grep -E "i18n|locale|defaultLocale" next.config.* 2>/dev/null | head -1 || echo "")
+test -f package.json && grep -oE '"(next|react|vue|svelte|tailwindcss)": *"[^"]+"' package.json
+test -f tailwind.config.ts -o -f tailwind.config.js && echo "tailwind"
+test -d components/ui && echo "shadcn-style component dir"
 ```
 
-### Paso 2 — Leer branding del proyecto
+## Step 2 — Read the brand, if the project has one
+
+Look for design documentation in the usual places (`docs/`, the README, a design-system
+package). If there is none, say so and continue with defaults — but tell the user the
+output stays generic until they write one down.
+
+## Step 3 — Read what exists today
+
+Open the component and its direct children, one level deep. Capture:
+
+- The structure — what actually renders
+- Which shared components it uses
+- The prominent utility classes
+- The data it paints
+- **The real copy** — labels, placeholders, CTAs, verbatim
+
+That last one matters most. Real copy is what stops the tool from inventing a product.
+
+## Step 4 — Screenshot, if a dev server is up
 
 ```bash
-# Producto identity
-test -f docs/branding/product-identity.md && cat docs/branding/product-identity.md
-test -f docs/branding/visual-system.md && cat docs/branding/visual-system.md
-test -f docs/branding/messaging.md && cat docs/branding/messaging.md
-
-# Founder voice-tone (heredado)
-test -f branding/founder/voice-tone.md && cat branding/founder/voice-tone.md
-```
-
-Si los branding files NO existen → marcar como "branding pendiente, prompt usará defaults" + recomendar al user rellenar las plantillas antes de iterar diseño en serio.
-
-### Paso 3 — Leer la página/componente actual
-
-Si el input es path TSX → leer el archivo + componentes children directos (1 nivel).
-
-Si el input es ruta `/X` → buscar en `apps/saas/app/(saas)/X/page.tsx` o `app/X/page.tsx` (depende de la convención del proyecto).
-
-Capturar:
-- JSX structure (qué se renderiza)
-- Componentes shadcn usados (`<Button>`, `<Card>`, etc.)
-- Tailwind classes prominentes
-- Estado / data shape (qué data se pinta)
-- Copy text actual (placeholders, labels, CTAs)
-
-### Paso 4 — Screenshot (opcional)
-
-Si dev server corre (`pnpm dev`) y la ruta es accesible:
-
-```bash
-# Verificar dev server
 curl -sf http://localhost:3000 >/dev/null && echo "dev server running"
 ```
 
-Si corre → preguntar al user si quiere capturar screenshot via Playwright MCP. Si dice sí → `mcp__plugin_everything-claude-code_playwright__browser_navigate` + `browser_take_screenshot` y guardar en `/tmp/redesign-ui-current.png`.
+If it is, offer to capture the page with a browser tool and attach the image to the
+prompt. If not, skip it — a text prompt still works.
 
-Si no corre → skip, sólo prompt textual.
+## Step 5 — Pick the tool
 
-### Paso 5 — Tool selection (si "auto")
-
-| Goal + Stack | Tool recomendada |
+| Goal and stack | Tool |
 |---|---|
-| Stack Next.js + shadcn + Tailwind, goal: código directo | **v0** |
-| Goal: explorar opciones rápidas sin código | **Figma AI** |
-| Goal: mobile flow completo (no una pantalla) | **Google Stitch** |
-| Goal: full app del cero | **Lovable** |
-| Goal: wireframe rápido low-fi | **Galileo / Uizard** |
+| React + Tailwind, want code back | **v0** |
+| Explore several options, no code | **Figma AI** |
+| A whole mobile flow, not one screen | **Google Stitch** |
+| A standalone app from scratch | **Lovable** |
+| Fast low-fi wireframes | **Galileo / Uizard** |
 
-Si user fija tool, override.
+A tool the user names always wins.
 
-### Paso 6 — Generar el prompt
-
-Estructura del prompt (markdown, copy-pasteable):
+## Step 6 — Write the prompt
 
 ```markdown
-# Redesign request: <PÁGINA/COMPONENTE>
+# Redesign request: <PAGE / COMPONENT>
 
 ## Product context
+- **Name**: <product>
+- **One-liner**: <what it does>
+- **Target user**: <who>
+- **Primary UI language**: <language>
 
-- **Name**: <PRODUCT_NAME desde product-identity.md>
-- **One-liner**: <DESC desde product-identity.md>
-- **Target user**: <de target-audience.md, primer perfil real>
-- **Domain**: <ej. "Japanese idol fan community / oshikatsu">
-- **Primary UI language**: <JP / EN / multi>
+## Stack constraints (the output must respect these)
+- <framework and version>
+- <styling approach — utility classes only, no custom CSS, etc.>
+- <component library in use>
+- <responsive target, dark mode, icon set>
 
-## Stack constraints (output debe respetar)
-
-- Next.js 15 App Router + React Server Components
-- TypeScript strict
-- Tailwind CSS (sólo utility classes, no CSS custom)
-- shadcn/ui components (`<Button>`, `<Card>`, `<Dialog>`, `<Form>`, `<Input>`, etc.)
-- Mobile-first responsive (PWA, no native app inicialmente)
-- Dark mode soportado (todos los colores via tokens, no hardcoded)
-- Iconos: Lucide React
-
-## Brand guidelines
-
+## Brand
 ### Visual tone
+<palette, typography, density — from the project's own docs>
+### Voice
+<how the product talks; 3-5 bullets, not the whole document>
+### Copy language
+<language>. Real strings from the current screen:
+- <3-4 verbatim strings>
 
-<Pegar contenido de visual-system.md "Tono visual", paleta, tipografía>
+## Current screen
+<what it shows, what it lets you do, which states exist: loading, empty, error>
+### Components present
+- <list>
+### Current copy (verbatim)
+<paste real strings>
+### Pain points
+<what's wrong today; if unknown, say "dense, unclear hierarchy">
 
-### Voice tone
+## Goal
+<the user's request, unedited>
 
-<Pegar foundation de voice-tone.md — bullets clave, sin todo el doc>
+## Expected output
+<per tool: a component, N frame variants, a full flow, a preview, annotated wireframes>
 
-- Casual con substancia, no corporate
-- Honesto sobre limitaciones
-- Sin urgencia performativa ("🔥 LAST CHANCE")
-- Sin LinkedIn-guru posturing
-
-### Idioma del copy
-
-<JP nativo / EN profesional / multi>. Ejemplos de copy actual en la app:
-- <pegar 3-4 strings reales del componente actual>
-
-## Current screen — qué hace hoy
-
-<DESCRIPCIÓN breve de la página: qué data muestra, qué acciones permite, qué states tiene (loading, empty, error).>
-
-### Componentes presentes
-
-- <lista de componentes principales>
-
-### Copy actual (literal)
-
-<pegar strings literales para que la AI mantenga el dominio del producto>
-
-### Pain points del diseño actual
-
-<si user los menciona; si no, dejar genérico tipo "denso visualmente, sin jerarquía clara">
-
-## Goal del rediseño
-
-<lo que el user pidió, tal cual>
-
-## Output esperado
-
-<según tool seleccionada:>
-
-- **v0**: React component completo, JSX + Tailwind, listo para `pnpm dlx shadcn@latest add` cualquier shadcn nuevo
-- **Figma AI**: 3-5 variantes exploratorias del frame, en mobile-first viewport (375×812)
-- **Stitch**: full flow del feature (no solo una pantalla — el journey completo)
-- **Lovable**: standalone preview con interactividad básica
-- **Galileo**: wireframes annotated low-fi con anotaciones del rationale
-
-## Constraints negativas (NO hacer)
-
-- NO usar gradientes saturados / neon (no es la estética)
-- NO añadir CTAs falsos urgentes ("Limited offer!")
-- NO inventar features que no estén en la lista actual
-- NO cambiar la lógica del componente — solo presentación
-- NO usar imágenes stock genéricas (placeholder solo)
+## Do NOT
+- Invent features that aren't in the current screen
+- Change the component's logic — presentation only
+- Add urgency CTAs ("Limited offer!")
+- Use generic stock imagery
 ```
 
-### Paso 7 — Output al user
+## Step 7 — Hand it over
 
-1. Guardar el prompt en `/tmp/redesign-ui-prompt.md` para inspección
-2. Copiar al clipboard usando la skill `copy` (Wayland: `wl-copy`):
+Save the prompt to a file, copy it to the clipboard if the environment has a clipboard
+tool, and tell the user which tool to open, why, and to attach the screenshot if that tool
+accepts image input.
 
-```bash
-wl-copy < /tmp/redesign-ui-prompt.md
-```
+| Tool | URL |
+|---|---|
+| v0 | https://v0.dev |
+| Figma AI | https://figma.com |
+| Google Stitch | https://stitch.withgoogle.com |
+| Lovable | https://lovable.dev |
+| Galileo | https://usegalileo.ai |
 
-3. Mostrar al user:
+## Anti-patterns
 
-```
-📐 Prompt generado para redesign de <PÁGINA>
+- Writing the prompt without reading the current component — the output will be generic
+- Assuming the stack instead of detecting it
+- Pasting whole documentation files into the prompt — it overflows the tool's context;
+  extract only what applies
+- Asking for "a nicer design" with no goal — vague in, vague out
+- Recommending a code-generating tool when the goal is exploring: it returns one variant,
+  and exploring needs several
 
-Tool recomendada: <TOOL>
-Razón: <una frase>
+## When not to use it
 
-✅ Prompt copiado al clipboard (wl-copy)
-📄 Guardado en /tmp/redesign-ui-prompt.md
+- **Small tweaks** (colour, spacing) — do them directly
+- **A visual bug** (clipped text, broken alignment) — that's debugging, not redesign
+- **Before the product has any design direction** — write that down first, or the prompt
+  comes out empty
 
-Siguiente paso:
-1. Abre <URL de la tool>
-2. Pega el prompt (Ctrl+V)
-3. Si tool soporta image input → adjunta /tmp/redesign-ui-current.png (si se capturó)
-
-URLs:
-- v0: https://v0.dev
-- Figma AI: https://figma.com (cmd+K → "Generate")
-- Google Stitch: https://stitch.withgoogle.com
-- Lovable: https://lovable.dev
-- Galileo: https://usegalileo.ai
-
-Cuando tengas resultados que te gusten:
-- Pásamelos por chat (link, screenshot, o código)
-- /implement-redesign (skill futura) o sólo "implementa esta variante"
-```
-
-## Anti-patrones
-
-- ❌ Generar prompt sin leer el componente actual (output será genérico)
-- ❌ Asumir stack — siempre detectar via package.json
-- ❌ Olvidar el voice-tone (output corporativo cuando producto es casual oshi fan)
-- ❌ Pedir "diseño bonito" sin goal específico (vague in, vague out)
-- ❌ Copiar TODO el contenido de docs/ al prompt (overflow del context window de la tool destino — extraer solo lo relevante)
-- ❌ Recomendar v0 cuando el goal es "explorar opciones rápidas" (v0 da una sola variante de código; para explorar usa Figma AI o Stitch)
-
-## Cuándo NO usar esta skill
-
-- **Cambios menores de UI** (color tweak, spacing) — Claude Code lo hace bien directo
-- **Bug visual específico** (texto cortado, alineación rota) — debug, no redesign
-- **Cuando branding aún no está definido** — primero rellena `branding/product/`, sino el prompt sale vacío
-
-## Frecuencia recomendada
-
-- 1× por feature mayor cuando llegue a "funciona pero feo"
-- NO usar para iterar 5 veces la misma página — si la primera variante no convence, el problema es el prompt, no la tool
-
-## Output cache
-
-`/tmp/redesign-ui-prompt.md` se sobreescribe cada vez. Si quieres preservarlo:
-
-```bash
-cp /tmp/redesign-ui-prompt.md ~/redesigns/$(date +%Y%m%d-%H%M)-<página>.md
-```
-
-## Relación con otras skills
-
-- Lee de `branding/founder/` y `docs/branding/product/` (heredados de indie-starter)
-- Usa la skill `copy` (wl-copy) para clipboard
-- Complementa Claude Code, no reemplaza — la implementación final del rediseño la hace Claude Code de vuelta
-- Futuro: `/implement-redesign` que tome el output de la tool externa y lo aterrice en el proyecto
+Use it once per major feature, when it reaches "works but ugly". If the first variant
+doesn't convince, fix the prompt rather than re-rolling the tool.

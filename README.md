@@ -31,7 +31,7 @@ part of that which is generic enough to be useful to anyone.
 | `claude/settings.json` | Permissions (68 allow / 16 deny), hooks, statusline |
 | `claude/CLAUDE.md` | A template — structure, not content |
 | `claude/hooks/` | Two `PreToolUse` hooks that actually stop things |
-| `claude/skills/` | 11 skills for day-to-day development |
+| `claude/skills/` | 7 skills for day-to-day development |
 | `claude/statusline-command.sh` | Status line showing **context used** — the number you steer by |
 | `install.sh` | Symlinks it into `~/.claude` |
 
@@ -75,17 +75,10 @@ Development only — nothing tied to my projects.
 | `commit-push-pr` | Commit, push and open a draft PR in one go |
 | `get-base-branch` | Detects the closest ancestor branch |
 | `issue` | Writes a GitHub issue from a description |
-| `review` | Code review in two modes: GitHub PR, or uncommitted local changes |
-| `resolve-review` | Processes review comments received on your PR, drafts replies |
-| `resolve-bot-review` | Same, for bot reviews (Copilot, PR-Agent, etc.) |
 | `redesign-ui` | Builds a prompt for UI-design-focused models |
 | `new-ai-project` | Scaffolds an AI/ML project |
 | `new-llm-project` | Scaffolds an LLM project |
-| `wtd` | Worktree dashboard — scans active worktrees and summarizes them |
 
-`review` is the one worth reading even if you never run it: it is 450 lines of things that
-went wrong in real reviews. Adapt its context sources (issue tracker, docs, chat) to yours
-— as shipped, they are mine.
 
 ## How to actually use this
 
